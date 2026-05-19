@@ -125,25 +125,30 @@ int main(){
     for (const auto& category : Categories) {
         categories.push_back({category.first, category.second});
     }
-    // Установка лимитов для категорий (пример)
-    setCategoryLimit("сон", 1);
-    setCategoryLimit("учеба", 1);
-    setCategoryLimit("работа", 1);
-    setCategoryLimit("развлечения", 1);
-    setCategoryLimit("прием пищи", 1);
-    setCategoryLimit("спорт", 1);
-    setCategoryLimit("другое", 1);
+    setCategoryLimit("сон", 420);
+    setCategoryLimit("учеба", 300);
+    setCategoryLimit("работа", 300);
+    setCategoryLimit("развлечения", 120);
+    setCategoryLimit("прием пищи", 90);
+    setCategoryLimit("спорт", 90);
+    setCategoryLimit("другое", 120);
     
     int actions_iterator = 0;
     bool action_chosen = false;
-    std::string selected_category_tag = categories[6].first;
+    std::string selected_category_tag = categories[6].first; // [6] <- the programmer is eepy
 
-    TimeTracker tracker; // import #1
+    TimeTracker tracker;
     bool was_tracking_active = false;
     
     bool input_mode = false;
     std::string input_buffer = "";
     int timer_hours = 0;
+
+    bool limit_input_mode = false;
+    std::string limit_input_buffer = "";
+    std::string selected_limit_category = categories[6].second;
+    int current_limit_value = 0;
+    sf::Text limit_status(font);
     
     bool show_tracker_status = false;
 
@@ -158,9 +163,9 @@ int main(){
 
     // plain text Text objects
     sf::Text greetings(font);
-    greetings.setString(L"Нет времени объяснять,\nвремени вообще нет");
-    greetings.setFillColor(sf::Color::Black);
-    greetings.setPosition(sf::Vector2f(500, 10));
+    greetings.setString(L"Добро пожаловать в наш трекер!");
+    greetings.setFillColor(sf::Color::White);
+    greetings.setPosition(sf::Vector2f(350, 10));
 
     sf::Text global_time(font);
     global_time.setPosition(sf::Vector2f(10, 800));
@@ -185,15 +190,16 @@ int main(){
     // tracker buttons bundle
     float act_choice_pos_x = 500;
     float act_choice_pos_y = 300;
-    Button choice_itself(categories[6].second, act_choice_pos_x, act_choice_pos_y); // [6] - the programmer is eepy
+    Button choice_itself(categories[6].second, act_choice_pos_x, act_choice_pos_y); 
     Button choice_left_arrow("<- ", act_choice_pos_x - 200, act_choice_pos_y - 10);
     Button choice_right_arrow(" ->", act_choice_pos_x + 200, act_choice_pos_y - 10);
+    Button setLimitButton("Установить лимит", 540, 500);
 
     // lambda for choice_itself centering
     auto centerChoiceButton = [&]() {
         sf::Vector2u windowSize = window.getSize();
         float centerX = windowSize.x / 2.0f;
-        float centerY = act_choice_pos_y;  // Сохраняем Y-позицию
+        float centerY = act_choice_pos_y; 
         float buttonWidth = choice_itself.getSize().x;
         choice_itself.setPosition(centerX - buttonWidth / 2 - 75, centerY);
     };
@@ -202,8 +208,16 @@ int main(){
 
     sf::Text timer_settings(font);
     timer_settings.setPosition(sf::Vector2f(act_choice_pos_x - 100, act_choice_pos_y + 100));
-    timer_settings.setString(L"Хочу таймер на минут");
+    timer_settings.setString(L"Установить таймер на минут");
     timer_settings.setFillColor(sf::Color(36, 17, 87));
+
+    sf::Text limit_display(font);
+    limit_display.setPosition(sf::Vector2f(540, 560));
+    limit_display.setCharacterSize(18);
+    limit_display.setFillColor(sf::Color(36, 17, 87));
+    auto updateLimitDisplay = [&]() {
+        limit_display.setString("");
+    };
 
     // main loop
     // | | | |
@@ -219,7 +233,7 @@ int main(){
             }
 
 
-            // p as "releeeasee meeee"
+            // p as "release me"
             if (const auto* key_event = event->getIf<sf::Event::KeyPressed>()) {
                 if (key_event->scancode == sf::Keyboard::Scancode::P && tracker.isTrackingActive()) {
                     tracker.finishTracking();
@@ -240,14 +254,14 @@ int main(){
                     if (std::isdigit(entered_char)) {
                         input_buffer += entered_char;
                         if (!input_buffer.empty()) {
-                            timer_settings.setString(L"Хочу таймер на " + sf::String::fromUtf8(input_buffer.begin(), input_buffer.end()) + L" минут");
+                            timer_settings.setString(L"Установить таймер на " + sf::String::fromUtf8(input_buffer.begin(), input_buffer.end()) + L" минут");
                         }
                     }
                 }
                 
                 if (const auto* key_event = event->getIf<sf::Event::KeyPressed>()) {
 
-                    // enter as "aight, i'll play your game for once"
+                    // enter as "aight, i'll play your game"
                     if (key_event->scancode == sf::Keyboard::Scancode::Enter) {
                         if (!input_buffer.empty()) {
                             timer_hours = std::stoi(input_buffer);
@@ -266,9 +280,9 @@ int main(){
                         if (!input_buffer.empty()) {
                             input_buffer.pop_back();
                             if (!input_buffer.empty()) {
-                                timer_settings.setString(L"Хочу таймер на " + sf::String::fromUtf8(input_buffer.begin(), input_buffer.end()) + L" минут");
+                                timer_settings.setString(L"Установить таймер на " + sf::String::fromUtf8(input_buffer.begin(), input_buffer.end()) + L" минут");
                             } else {
-                                timer_settings.setString(L"Хочу таймер на минут");
+                                timer_settings.setString(L"Установить таймер на минут");
                                 timer_settings.setFillColor(sf::Color(36, 17, 87));
                             }
                         }
@@ -279,8 +293,54 @@ int main(){
                         input_mode = false;
                         input_buffer.clear();
                         action_chosen = false;
-                        timer_settings.setString(L"Хочу таймер на минут");
+                        timer_settings.setString(L"Установить таймер на минут");
                         timer_settings.setFillColor(sf::Color(36, 17, 87));
+                    }
+                }
+            }
+
+            // limits input logic
+            if (limit_input_mode) {
+                if (const auto* text_event = event->getIf<sf::Event::TextEntered>()) {
+                    char entered_char = static_cast<char>(text_event->unicode);
+                    
+                    if (std::isdigit(entered_char)) {
+                        limit_input_buffer += entered_char;
+                        limit_display.setString(L"Введите лимит для " + 
+                            sf::String::fromUtf8(selected_limit_category.begin(), selected_limit_category.end()) + 
+                            L": " + sf::String::fromUtf8(limit_input_buffer.begin(), limit_input_buffer.end()));
+                    }
+                }
+                
+                if (const auto* key_event = event->getIf<sf::Event::KeyPressed>()) {
+                    // Enter - save limit
+                    if (key_event->scancode == sf::Keyboard::Scancode::Enter) {
+                        if (!limit_input_buffer.empty()) {
+                            int new_limit = std::stoi(limit_input_buffer);
+                            setCategoryLimit(selected_limit_category, new_limit);
+                            updateLimitDisplay();
+                            limit_display.setFillColor(sf::Color(0, 150, 0));
+                        }
+                        limit_input_mode = false;
+                        limit_input_buffer.clear();
+                    }
+                    
+                    // Backspace - backpedal
+                    if (key_event->scancode == sf::Keyboard::Scancode::Backspace) {
+                        if (!limit_input_buffer.empty()) {
+                            limit_input_buffer.pop_back();
+                            limit_display.setString(L"Введите лимит для " + 
+                                sf::String::fromUtf8(selected_limit_category.begin(), selected_limit_category.end()) + 
+                                L": " + sf::String::fromUtf8(limit_input_buffer.begin(), limit_input_buffer.end()));
+                        }
+                    }
+                    
+                    // Escape - cancel limit
+                    if (key_event->scancode == sf::Keyboard::Scancode::Escape) {
+                        limit_input_mode = false;
+                        limit_input_buffer.clear();
+                        updateLimitDisplay();
+                        limit_display.setFillColor(sf::Color(200, 200, 200));
                     }
                 }
             }
@@ -302,7 +362,9 @@ int main(){
                 }
                 choice_itself.setText(categories[actions_iterator].second);
                 selected_category_tag = categories[actions_iterator].first;
+                selected_limit_category = categories[actions_iterator].second;
                 centerChoiceButton();
+                updateLimitDisplay();
             }
              if(choice_left_arrow.isPressed(window, *event)){
                 if(actions_iterator == 0){
@@ -312,7 +374,9 @@ int main(){
                 }
                 choice_itself.setText(categories[actions_iterator].second);
                 selected_category_tag = categories[actions_iterator].first;
+                selected_limit_category = categories[actions_iterator].second;
                 centerChoiceButton();
+                updateLimitDisplay();
             }
             
             if(choice_itself.isPressed(window, *event)){
@@ -329,11 +393,28 @@ int main(){
                 } else{
                     timer_settings.setFillColor(sf::Color(36, 17, 87));
                     if (!input_mode) {
-                        timer_settings.setString(L"Хочу таймер на минут");
+                        timer_settings.setString(L"Установить таймер на минут");
                     }
                     action_chosen = false;
                     input_mode = false;
                     input_buffer.clear();
+                }
+            }
+            
+            // limits button
+            if (setLimitButton.isPressed(window, *event) && currentState == AppState::TRACKER_SCREEN) {
+                if (!limit_input_mode) {
+                    limit_input_mode = true;
+                    limit_input_buffer.clear();
+                    limit_display.setString(L"Введите лимит для " + 
+                        sf::String::fromUtf8(selected_limit_category.begin(), selected_limit_category.end()) + 
+                        L" (минуты):");
+                    limit_display.setFillColor(sf::Color(255, 200, 0));
+                } else {
+                    limit_input_mode = false;
+                    limit_input_buffer.clear();
+                    updateLimitDisplay();
+                    limit_display.setFillColor(sf::Color(200, 200, 200));
                 }
             }
 
@@ -374,7 +455,7 @@ int main(){
         bool current_tracking_state = tracker.isTrackingActive();
     if (was_tracking_active && !current_tracking_state) {
         // tracker stopped by any means -> updating all flags
-        timer_settings.setString(L"Хочу таймер на минут");
+        timer_settings.setString(L"Установить таймер на минут");
         timer_settings.setFillColor(sf::Color(36, 17, 87));
         show_tracker_status = false;
         action_chosen = false;
@@ -385,7 +466,7 @@ int main(){
         
         // tracker status
         if (show_tracker_status && tracker.isTrackingActive()) {
-            tracker_status.setString(L"Трекер работает, и ты тоже иди работай");
+            tracker_status.setString(L"Трекер активен");
             tracker_status.setFillColor(sf::Color(0, 150, 0));
         } else if (!tracker.isTrackingActive() && show_tracker_status) {
             tracker_status.setString(L"Трекер остановлен");
@@ -400,6 +481,7 @@ int main(){
         menuTrackerButton.update(window);
         menuStatsButton.update(window);
         backButton.update(window);
+        setLimitButton.update(window);
         
         // i want to become a drawer
         window.clear(sf::Color{36, 17, 87});
@@ -418,6 +500,8 @@ int main(){
             choice_left_arrow.draw(window);
             choice_right_arrow.draw(window);
             backButton.draw(window);
+            setLimitButton.draw(window);
+            window.draw(limit_display);
             if(show_tracker_status){
                 window.draw(tracker_status);
             }
